@@ -3,6 +3,8 @@ version: 0.2
 phases:
   pre_build:
     commands:
+      - echo Getting aws amplify default image
+      - git clone https://github.com/aws-amplify/amplify-console.git
       - echo Logging in to Amazon ECR...
       # - $(aws ecr get-login --no-include-email --region $AWS_DEFAULT_REGION)
   build:
