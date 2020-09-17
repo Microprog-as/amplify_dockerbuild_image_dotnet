@@ -1,31 +1,49 @@
-# amplify_dockerbuild_image_dotnet
- 
+# AWS Amplify Console & builidng dotnet core lambda functions
 
+I added my first [dotnet core lambda function](https://aws.amazon.com/blogs/developer/introducing-net-core-support-for-aws-amplify-backend-functions/) to an *Amplify* app, and on my first Amplify console build, I got the error:
+`Unable to find dotnet version 3.1 on the path.`
 
-https://docs.aws.amazon.com/amplify/latest/userguide/custom-build-image.html
+## The problem
 
-https://github.com/aws-amplify/amplify-console/issues/685
+The cause of the error message was that dotnet tools are not installed in the default *Amplify Console* build image. I was looking into installing the dotnet tools as steps in the `amplify.yml` when I found this the Github issue [#685](https://github.com/aws-amplify/amplify-console/issues/685) reported by @CoreyPritchard.
 
+Lucky for me @alexkates had already described a better fix in a comment to the [github issue](https://github.com/aws-amplify/amplify-console/issues/685#issuecomment-685684624), with creating a *custom Docker image* to build with instead.
 
-here is the step-by-step procedure to get this to work.
+## The solution
 
-git clone https://github.com/aws-amplify/amplify-console.git
-cd amplify-console/images/latest && docker build -t amplify-console/buildimage:latest .
-Create your own Dockerfile with the following...
-`FROM amplify-console/buildimage:latest
+Since I love CI/CD pipelines, I decided to automate the steps provided by @alexkates in an *AWS CodeBuild project*.
 
-RUN rpm -Uvh https://packages.microsoft.com/config/centos/7/packages-microsoft-prod.rpm
-RUN yum -y update && \
-    yum -y install \
-        dotnet-host-3.1.4 \
-        dotnet-sdk-3.1
+### This Github repo
 
-RUN dotnet tool install -g Amazon.Lambda.Tools
-RUN dotnet tool install -g Amazon.Lambda.TestTool-3.1
-RUN echo "export PATH=\$PATH:/root/.dotnet/tools" >> /root/.bashrc
+The files that are doing the job here are:
 
-ENTRYPOINT [ "bash", "-c"]`
+* `buildspec.yml`
+  Automate the steps from cloning the AWS Amplify console latest image repo, login into Docker Hub, building the images and pushing the new build image to Docker Hub.
+* `Dockerfile`
+  Describes the additions needed in the docker image to make dotnet core builds work. See comments in it for more info.
 
+### AWS Codebuild project
 
-Build and push your image to Dockerhub.
-In the Amplify Console, wire up your custom image in the Build Settings.
+I followed the this [Docker sample for CodeBuild](https://docs.aws.amazon.com/codebuild/latest/userguide/sample-docker.html) when setting up the project, but connected it to this repository so this `buildspec.yml` and `Dockerfile` are used.
+
+Environment variables that muyst be set up for the project:
+
+* IMAGE_REPO_NAME
+The Docker Hub image repository name including the user/organisation. Example `your docker hub user or organisation`/`repository name` .
+* IMAGE_TAG
+ Normally "latest".
+* DOCKER_HUB_USER
+A Docker Hub username
+* DOCKER_HUB_TOKEN
+ An access token for the username yoo provided
+
+### Make your Amplify app use the new build image
+
+After the first succesfull build of the new docker image, you must wire up your custom image in the *Amplify Console* Build Settings. See  [Configure Amplify to use the custom docker image](https://docs.aws.amazon.com/amplify/latest/userguide/custom-build-image.html) on how to do it.
+
+## Possible improvements
+
+* The provision of the build image from Docker Hub seems to be slow. A possible improvement is to push it to Amazon Elastic Container Registry instead of Docker Hub
+* The access token is printed in the log
+Use the `-password-stdin`  instead of `-password` argument when login to docker hub. See [docs](https://docs.docker.com/engine/reference/commandline/login/).
+* Customize the AWS Dockerfile and remove everything that is not necesarry to improve load time.
