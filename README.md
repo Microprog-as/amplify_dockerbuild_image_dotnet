@@ -47,3 +47,4 @@ After the first succesfull build of the new docker image, you must wire up your 
 * The access token is printed in the log
 Use the `-password-stdin`  instead of `-password` argument when login to docker hub. See [docs](https://docs.docker.com/engine/reference/commandline/login/).
 * Customize the AWS Dockerfile and remove everything that is not necesarry to improve load time.
+
